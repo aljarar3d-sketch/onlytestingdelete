@@ -26,7 +26,7 @@
 
         async function testAljar() {
             try {
-                const response = await fetch(`http://localhost:5000/api/clients/public/${CLIENT_SLUG}`, {
+                const response = await fetch(`https://aljar-api.onrender.com/api/clients/public/${CLIENT_SLUG}`, {
                     method: 'GET',
                     headers: {
                         'x-api-key': API_KEY // The Golden Ticket
