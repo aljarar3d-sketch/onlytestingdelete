@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aljar API Tester</title>
+    <style>
+        body { background: #121212; color: white; font-family: sans-serif; padding: 50px; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; border: 1px solid #333; max-width: 500px; margin: auto; }
+        .category-title { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .asset-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; }
+        .ar-btn { background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .ar-btn:hover { background: #ff6b81; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2 style="margin-top: 0;">👟 Aljar Pipeline Test</h2>
+        <p style="color: #2ecc71; font-size: 0.9rem;">Connected to: <span id="client-name">...</span></p>
+        <div id="assets-container"></div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const CLIENT_SLUG = 'jordan-kicks'; 
+        const API_KEY = '09c5dcbe-3395-4f10-9669-fc540518403f'; // <-- Copy this from your ClientManager dashboard!
+
+        async function testAljar() {
+            try {
+                const response = await fetch(`http://localhost:5000/api/clients/public/${CLIENT_SLUG}`, {
+                    method: 'GET',
+                    headers: {
+                        'x-api-key': API_KEY // The Golden Ticket
+                    }
+                });
+
+                if (!response.ok) throw new Error("Unauthorized or Client Not Found");
+
+                const data = await response.json();
+                document.getElementById('client-name').innerText = data.client;
+
+                const container = document.getElementById('assets-container');
+                
+                // --- Loop through Categories, then Assets ---
+                data.categories.forEach(cat => {
+                    const catHeader = document.createElement('div');
+                    catHeader.className = 'category-title';
+                    catHeader.innerText = cat.name;
+                    container.appendChild(catHeader);
+
+                    cat.assets.forEach(asset => {
+                        const item = document.createElement('div');
+                        item.className = 'asset-item';
+                        item.innerHTML = `
+                            <span>${asset.name}</span>
+                            <button class="ar-btn" onclick="launchAR('${asset.glb_url}', '${asset.usdz_url}', '${asset.name}')">
+                                View in AR
+                            </button>
+                        `;
+                        container.appendChild(item);
+                    });
+                });
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('assets-container').innerHTML = `<p style="color: #ff4757">❌ ${err.message}</p>`;
+            }
+        }
+
+        function launchAR(glb, usdz, name) {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (isIOS) {
+                // Trigger iOS Quick Look
+                const a = document.createElement('a');
+                a.setAttribute('rel', 'ar');
+                a.setAttribute('href', usdz);
+                a.append(document.createElement('img'));
+                a.click();
+            } else {
+                // Trigger Android Scene Viewer
+                const sceneViewerUrl = `intent://arvr.google.com/scene-viewer/1.0?file=${glb}&mode=ar_only&title=${encodeURIComponent(name)}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;`;
+                window.location.href = sceneViewerUrl;
+            }
+        }
+
+        testAljar();
+    </script>
+</body>
+</html>
