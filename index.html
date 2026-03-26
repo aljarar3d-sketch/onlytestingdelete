@@ -20,114 +20,90 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const CLIENT_SLUG = 'alaa'; 
-        const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a'; // <-- Copy this from your ClientManager dashboard!
+const CLIENT_SLUG = 'alaa'; 
+const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a';
 
-        async function testAljar() {
-            try {
-                const response = await fetch(`https://aljar-api.onrender.com/api/clients/public/${CLIENT_SLUG}`, {
-                    method: 'GET',
-                    headers: {
-                        'x-api-key': API_KEY // The Golden Ticket
-                    }
+async function testAljar() {
+    try {
+        const response = await fetch(`https://aljar-api.onrender.com/api/clients/public/${CLIENT_SLUG}`, {
+            method: 'GET',
+            headers: {
+                'x-api-key': API_KEY
+            }
+        });
+
+        if (!response.ok) throw new Error("Unauthorized or Client Not Found");
+
+        const data = await response.json();
+        document.getElementById('client-name').innerText = data.client;
+
+        const container = document.getElementById('assets-container');
+        container.innerHTML = "";
+
+        data.categories.forEach(cat => {
+            const catHeader = document.createElement('div');
+            catHeader.className = 'category-title';
+            catHeader.innerText = cat.name;
+            container.appendChild(catHeader);
+
+            cat.assets.forEach(asset => {
+                const item = document.createElement('div');
+                item.className = 'asset-item';
+
+                item.innerHTML = `
+                    <span>${asset.name}</span>
+                    <button class="ar-btn">View in AR</button>
+                `;
+
+                const btn = item.querySelector('button');
+                btn.addEventListener('click', () => {
+                    launchAR(asset.glb_url, asset.usdz_url, asset.name);
                 });
 
-                if (!response.ok) throw new Error("Unauthorized or Client Not Found");
+                container.appendChild(item);
+            });
+        });
 
-                const data = await response.json();
-                document.getElementById('client-name').innerText = data.client;
+    } catch (err) {
+        console.error(err);
+        document.getElementById('assets-container').innerHTML = `<p style="color:red">${err.message}</p>`;
+    }
+}
 
-                const container = document.getElementById('assets-container');
-                
-                // --- Loop through Categories, then Assets ---
-                data.categories.forEach(cat => {
-                    const catHeader = document.createElement('div');
-                    catHeader.className = 'category-title';
-                    catHeader.innerText = cat.name;
-                    container.appendChild(catHeader);
 
-                    cat.assets.forEach(asset => {
-                        const item = document.createElement('div');
-                        item.className = 'asset-item';
-                        item.innerHTML = `
-                            <span>${asset.name}</span>
-                            <button class="ar-btn" onclick="launchAR('${asset.glb_url}', '${asset.usdz_url}', '${asset.name}')">
-                                View in AR
-                            </button>
-                        `;
-                        container.appendChild(item);
-                    });
-                });
+// 🔥 CORE FIXED FUNCTION
+function launchAR(glb, usdz, name) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-            } catch (err) {
-                console.error(err);
-                document.getElementById('assets-container').innerHTML = `<p style="color: #ff4757">❌ ${err.message}</p>`;
-            }
-        }
+    console.log("Launching AR with:");
+    console.log("GLB:", glb);
+    console.log("USDZ:", usdz);
 
-        async function probeUrl(url) {
-            if (!url) return null;
-            // Try a HEAD request first
-            try {
-                const r = await fetch(url, { method: 'HEAD', mode: 'cors' });
-                if (r && r.ok) return url;
-            } catch (e) {
-                // ignore and try fallback
-            }
+    if (isIOS) {
+        // ✅ iOS Quick Look
+        const a = document.createElement('a');
+        a.setAttribute('rel', 'ar');
+        a.setAttribute('href', usdz);
+        a.appendChild(document.createElement('img'));
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
 
-            // Fallback: try without query string
-            try {
-                const base = url.split('?')[0];
-                if (base !== url) {
-                    const r2 = await fetch(base, { method: 'HEAD', mode: 'cors' });
-                    if (r2 && r2.ok) return base;
-                }
-            } catch (e) {
-                // ignore
-            }
+    } else {
+        // ✅ Android Scene Viewer
 
-            // Last attempt: try GET (some hosts don't allow HEAD)
-            try {
-                const r3 = await fetch(url, { method: 'GET', mode: 'cors' });
-                if (r3 && r3.ok) return url;
-            } catch (e) {
-                // ignore
-            }
+        // 🔥 CRITICAL: must be HTTPS + direct file
+        const sceneViewerUrl = 
+        `intent://arvr.google.com/scene-viewer/1.0?file=${encodeURIComponent(glb)}&mode=ar_only&title=${encodeURIComponent(name)}
+        #Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;`;
 
-            return null;
-        }
+        console.log("Scene Viewer URL:", sceneViewerUrl);
 
-        async function launchAR(glb, usdz, name) {
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        window.location.href = sceneViewerUrl;
+    }
+}
 
-            if (isIOS) {
-                const good = await probeUrl(usdz);
-                if (!good) {
-                    alert('Could not load USDZ for Quick Look. The asset may be missing on the server.');
-                    console.error('USDZ not reachable:', usdz);
-                    return;
-                }
-
-                const a = document.createElement('a');
-                a.setAttribute('rel', 'ar');
-                a.setAttribute('href', good);
-                a.append(document.createElement('img'));
-                a.click();
-            } else {
-                const good = await probeUrl(glb);
-                if (!good) {
-                    alert('Could not load GLB for Scene Viewer. The asset may be missing on the server.');
-                    console.error('GLB not reachable:', glb);
-                    return;
-                }
-
-                const sceneViewerUrl = `intent://arvr.google.com/scene-viewer/1.0?file=${encodeURIComponent(good)}&mode=ar_only&title=${encodeURIComponent(name)}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;`;
-                window.location.href = sceneViewerUrl;
-            }
-        }
-
-        testAljar();
-    </script>
+testAljar();
+</script>
 </body>
 </html>
