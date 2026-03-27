@@ -78,11 +78,16 @@
   ar
   ar-modes="webxr scene-viewer quick-look"
   camera-controls
-  auto-rotate>
+  auto-rotate
+  shadow-intensity="1">
 
   <button slot="ar-button" id="ar-button">
     🚀 VIEW IN YOUR SPACE
   </button>
+
+  <div slot="poster" style="color:white;">
+    Loading model...
+  </div>
 
 </model-viewer>
 
@@ -106,8 +111,6 @@ async function loadModels() {
       }
     );
 
-    console.log("STATUS:", response.status);
-
     if (!response.ok) {
       throw new Error("HTTP " + response.status);
     }
@@ -118,27 +121,31 @@ async function loadModels() {
     const list = document.getElementById("modelsList");
     list.innerHTML = "";
 
-    if (!data.categories) {
-      throw new Error("No categories found in API response");
-    }
+    let firstLoaded = false;
 
     data.categories.forEach(category => {
       category.assets.forEach(asset => {
 
         const div = document.createElement("div");
         div.className = "item";
-        div.innerText = `${category.name} → ${asset.name}`;
+        div.innerHTML = `<b>${category.name}</b> → ${asset.name}`;
 
         div.onclick = () => {
           loadModel(asset.glb_url, asset.usdz_url);
         };
 
         list.appendChild(div);
+
+        // ✅ AUTO LOAD FIRST MODEL
+        if (!firstLoaded) {
+          loadModel(asset.glb_url, asset.usdz_url);
+          firstLoaded = true;
+        }
       });
     });
 
   } catch (err) {
-    console.error("FULL ERROR:", err);
+    console.error("ERROR:", err);
     document.getElementById("modelsList").innerText = "❌ " + err.message;
   }
 }
@@ -146,11 +153,22 @@ async function loadModels() {
 function loadModel(glb, usdz) {
   const viewer = document.getElementById("viewer");
 
+  console.log("Loading model:", glb);
+
   viewer.src = glb;
   viewer.setAttribute("ios-src", usdz);
-
-  console.log("Loaded model:", glb);
 }
+
+// 🔥 DEBUG MODEL LOADING
+const viewer = document.getElementById("viewer");
+
+viewer.addEventListener("load", () => {
+  console.log("✅ MODEL LOADED SUCCESSFULLY");
+});
+
+viewer.addEventListener("error", (e) => {
+  console.error("❌ MODEL FAILED TO LOAD:", e);
+});
 
 // Start
 loadModels();
