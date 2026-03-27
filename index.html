@@ -91,15 +91,36 @@
 </div>
 
 <script>
-const API_URL = "https://aljar-api.onrender.com/api/clients/public/alaa?key=fd08c7d3-ec11-4624-b703-e6f5e3f2101a"; // <-- your endpoint
+const CLIENT_SLUG = 'alaa';
+const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a';
 
 async function loadModels() {
   try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
+    const response = await fetch(
+      `https://aljar-api.onrender.com/api/clients/public/${CLIENT_SLUG}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-api-key': API_KEY
+        }
+      }
+    );
+
+    console.log("STATUS:", response.status);
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const data = await response.json();
+    console.log("DATA:", data);
 
     const list = document.getElementById("modelsList");
     list.innerHTML = "";
+
+    if (!data.categories) {
+      throw new Error("No categories found in API response");
+    }
 
     data.categories.forEach(category => {
       category.assets.forEach(asset => {
@@ -117,8 +138,8 @@ async function loadModels() {
     });
 
   } catch (err) {
-    console.error(err);
-    document.getElementById("modelsList").innerText = "❌ Failed to load API";
+    console.error("FULL ERROR:", err);
+    document.getElementById("modelsList").innerText = "❌ " + err.message;
   }
 }
 
@@ -128,10 +149,10 @@ function loadModel(glb, usdz) {
   viewer.src = glb;
   viewer.setAttribute("ios-src", usdz);
 
-  console.log("Loaded:", glb);
+  console.log("Loaded model:", glb);
 }
 
-// Load on start
+// Start
 loadModels();
 </script>
 
