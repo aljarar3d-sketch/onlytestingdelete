@@ -1,109 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Aljar API Tester</title>
-    <style>
-        body { background: #121212; color: white; font-family: sans-serif; padding: 50px; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; border: 1px solid #333; max-width: 500px; margin: auto; }
-        .category-title { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .asset-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; }
-        .ar-btn { background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .ar-btn:hover { background: #ff6b81; transform: translateY(-2px); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR API Tester</title>
+
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #121212;
+      color: white;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h2 {
+      margin: 20px;
+    }
+
+    model-viewer {
+      width: 90%;
+      max-width: 800px;
+      height: 500px;
+      background: #1e1e1e;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    #ar-button {
+      background-color: #ff4757;
+      color: white;
+      border-radius: 8px;
+      border: none;
+      padding: 15px 30px;
+      font-weight: bold;
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: pointer;
+      z-index: 999;
+      display: flex !important;
+    }
+
+    .list {
+      width: 90%;
+      max-width: 800px;
+    }
+
+    .item {
+      background: #1e1e1e;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .item:hover {
+      background: #333;
+    }
+  </style>
 </head>
+
 <body>
 
-    <div class="card">
-        <h2 style="margin-top: 0;">👟 Aljar Pipeline Test</h2>
-        <p style="color: #2ecc71; font-size: 0.9rem;">Connected to: <span id="client-name">...</span></p>
-        <div id="assets-container"></div>
-    </div>
+<h2>📱 AR Models from API</h2>
 
-    <script>
-const CLIENT_SLUG = 'alaa'; 
-const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a';
+<model-viewer 
+  id="viewer"
+  src=""
+  ios-src=""
+  ar
+  ar-modes="webxr scene-viewer quick-look"
+  camera-controls
+  auto-rotate>
 
-async function testAljar() {
-    try {
-        const response = await fetch(`https://aljar-api.onrender.com/api/clients/public/${CLIENT_SLUG}`, {
-            method: 'GET',
-            headers: {
-                'x-api-key': API_KEY
-            }
-        });
+  <button slot="ar-button" id="ar-button">
+    🚀 VIEW IN YOUR SPACE
+  </button>
 
-        if (!response.ok) throw new Error("Unauthorized or Client Not Found");
+</model-viewer>
 
-        const data = await response.json();
-        document.getElementById('client-name').innerText = data.client;
+<div class="list" id="modelsList">
+  Loading models...
+</div>
 
-        const container = document.getElementById('assets-container');
-        container.innerHTML = "";
+<script>
+const API_URL = "https://aljar-api.onrender.com/api/clients/public/alaa"; // <-- your endpoint
 
-        data.categories.forEach(cat => {
-            const catHeader = document.createElement('div');
-            catHeader.className = 'category-title';
-            catHeader.innerText = cat.name;
-            container.appendChild(catHeader);
+async function loadModels() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
 
-            cat.assets.forEach(asset => {
-                const item = document.createElement('div');
-                item.className = 'asset-item';
+    const list = document.getElementById("modelsList");
+    list.innerHTML = "";
 
-                item.innerHTML = `
-                    <span>${asset.name}</span>
-                    <button class="ar-btn">View in AR</button>
-                `;
+    data.categories.forEach(category => {
+      category.assets.forEach(asset => {
 
-                const btn = item.querySelector('button');
-                btn.addEventListener('click', () => {
-                    launchAR(asset.glb_url, asset.usdz_url, asset.name);
-                });
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerText = `${category.name} → ${asset.name}`;
 
-                container.appendChild(item);
-            });
-        });
+        div.onclick = () => {
+          loadModel(asset.glb_url, asset.usdz_url);
+        };
 
-    } catch (err) {
-        console.error(err);
-        document.getElementById('assets-container').innerHTML = `<p style="color:red">${err.message}</p>`;
-    }
+        list.appendChild(div);
+      });
+    });
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("modelsList").innerText = "❌ Failed to load API";
+  }
 }
 
+function loadModel(glb, usdz) {
+  const viewer = document.getElementById("viewer");
 
-// 🔥 CORE FIXED FUNCTION
-function launchAR(glb, usdz, name) {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  viewer.src = glb;
+  viewer.setAttribute("ios-src", usdz);
 
-    console.log("Launching AR with:");
-    console.log("GLB:", glb);
-    console.log("USDZ:", usdz);
-
-    if (isIOS) {
-        // ✅ iOS Quick Look
-        const a = document.createElement('a');
-        a.setAttribute('rel', 'ar');
-        a.setAttribute('href', usdz);
-        a.appendChild(document.createElement('img'));
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-    } else {
-        // ✅ Android Scene Viewer
-
-        // 🔥 CRITICAL: must be HTTPS + direct file
-        const sceneViewerUrl = 
-        `intent://arvr.google.com/scene-viewer/1.0?file=${encodeURIComponent(glb)}&mode=ar_only&title=${encodeURIComponent(name)}
-        #Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end;`;
-
-        console.log("Scene Viewer URL:", sceneViewerUrl);
-
-        window.location.href = sceneViewerUrl;
-    }
+  console.log("Loaded:", glb);
 }
 
-testAljar();
+// Load on start
+loadModels();
 </script>
+
 </body>
 </html>
