@@ -3,73 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AR API Tester</title>
+  <title>Aljar AR Viewer</title>
 
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
   <style>
     body {
       margin: 0;
-      background: #121212;
+      background: #0f0f0f;
       color: white;
-      font-family: sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
+      min-height: 100vh;
     }
 
-    h2 {
-      margin: 20px;
-    }
+    h2 { margin: 20px 0 10px 0; font-weight: 300; letter-spacing: 1px; }
 
     model-viewer {
-      width: 90%;
+      width: 95%;
       max-width: 800px;
-      height: 500px;
-      background: #1e1e1e;
-      border-radius: 20px;
+      height: 60vh;
+      background: radial-gradient(circle, #2c2c2c 0%, #121212 100%);
+      border-radius: 24px;
       margin-bottom: 20px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
 
     #ar-button {
-      background-color: #ff4757;
+      background: #ff4757;
       color: white;
-      border-radius: 8px;
+      border-radius: 30px;
       border: none;
-      padding: 15px 30px;
+      padding: 12px 24px;
       font-weight: bold;
       position: absolute;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       cursor: pointer;
-      z-index: 999;
-      display: flex !important;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
     }
 
-    .list {
-      width: 90%;
-      max-width: 800px;
-    }
+    .list { width: 95%; max-width: 800px; padding-bottom: 40px; }
 
     .item {
       background: #1e1e1e;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: 0.2s;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s, background 0.2s;
+      border: 1px solid #333;
     }
 
-    .item:hover {
+    .item:hover { background: #252525; transform: translateY(-2px); }
+
+    .item-info { flex-grow: 1; cursor: pointer; }
+    .item-info b { display: block; color: #ff4757; font-size: 12px; text-transform: uppercase; }
+    .item-info span { font-size: 16px; color: #eee; }
+
+    .qr-thumb {
+      width: 60px;
+      height: 60px;
+      background: white;
+      border-radius: 8px;
+      padding: 4px;
+      cursor: zoom-in;
+    }
+
+    .no-qr {
+      width: 60px;
+      height: 60px;
       background: #333;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #666;
     }
   </style>
 </head>
 
 <body>
 
-<h2>📱 AR Models from API</h2>
+<h2>ALJAR <span style="color:#ff4757">VAULT</span></h2>
 
 <model-viewer 
   id="viewer"
@@ -79,102 +105,100 @@
   ar-modes="webxr scene-viewer quick-look"
   camera-controls
   auto-rotate
-  shadow-intensity="1">
+  shadow-intensity="1"
+  environment-image="neutral"
+  exposure="1.2">
 
   <button slot="ar-button" id="ar-button">
-    🚀 VIEW IN YOUR SPACE
+    <span>👋</span> VIEW IN YOUR SPACE
   </button>
 
-  <div slot="poster" style="color:white;">
-    Loading model...
+  <div slot="poster" style="display:flex; justify-content:center; align-items:center; height:100%;">
+    <p>Select a model to begin...</p>
   </div>
-
 </model-viewer>
 
 <div class="list" id="modelsList">
-  Loading models...
+  <p style="text-align:center; color:#666;">Synchronizing with Aljar Cloud...</p>
 </div>
 
 <script>
-const CLIENT_SLUG = 'alaa';
+// --- ⚙️ CONFIGURATION ---
+const urlParams = new URLSearchParams(window.location.search);
+const CLIENT_SLUG = urlParams.get('client') || 'alaa'; // Reads ?client=xxx
+const TARGET_ASSET = urlParams.get('asset'); // Reads ?asset=xxx
 const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a';
 
 async function loadModels() {
   try {
     const response = await fetch(
       `https://aljar-api.onrender.com/api/clients/public/${CLIENT_SLUG}`,
-      {
-        method: 'GET',
-        headers: {
-          'x-api-key': API_KEY
-        }
-      }
+      { headers: { 'x-api-key': API_KEY } }
     );
 
-    if (!response.ok) {
-      throw new Error("HTTP " + response.status);
-    }
+    if (!response.ok) throw new Error("Connection failed");
 
     const data = await response.json();
-    console.log("DATA:", data);
-
     const list = document.getElementById("modelsList");
     list.innerHTML = "";
 
-    let firstLoaded = false;
+    let autoLoaded = false;
 
     data.categories.forEach(category => {
       category.assets.forEach(asset => {
-
         const div = document.createElement("div");
         div.className = "item";
-        div.innerHTML = `<b>${category.name}</b> → ${asset.name}`;
+        
+        // 1. Setup QR Thumbnail or Placeholder
+        const qrHtml = asset.qr_code_url 
+          ? `<img src="${asset.qr_code_url}" class="qr-thumb" onclick="window.open('${asset.qr_code_url}')">`
+          : `<div class="no-qr">No QR</div>`;
 
-        div.onclick = () => {
+        div.innerHTML = `
+          <div class="item-info" id="asset-${asset.slug}">
+            <b>${category.name}</b>
+            <span>${asset.name}</span>
+          </div>
+          ${qrHtml}
+        `;
+
+        // 2. Click Logic
+        div.querySelector('.item-info').onclick = () => {
           loadModel(asset.glb_url, asset.usdz_url);
         };
 
         list.appendChild(div);
 
-        // ✅ AUTO LOAD FIRST MODEL
-        if (!firstLoaded) {
+        // 3. 🧠 SMART LOAD LOGIC
+        // Priority 1: If URL has ?asset=... load that one
+        // Priority 2: If no asset in URL, load the very first one
+        if (TARGET_ASSET && asset.slug === TARGET_ASSET) {
           loadModel(asset.glb_url, asset.usdz_url);
-          firstLoaded = true;
+          autoLoaded = true;
+          div.style.borderColor = "#ff4757"; // Highlight it
+        } else if (!TARGET_ASSET && !autoLoaded) {
+          loadModel(asset.glb_url, asset.usdz_url);
+          autoLoaded = true;
         }
       });
     });
 
   } catch (err) {
-    console.error("ERROR:", err);
-    document.getElementById("modelsList").innerText = "❌ " + err.message;
+    document.getElementById("modelsList").innerHTML = `<p style="color:red">❌ ${err.message}</p>`;
   }
 }
 
 function loadModel(glb, usdz) {
   const viewer = document.getElementById("viewer");
   
-  // We append the API Key so the Vault allows the download
-  const authenticatedGlb = `${glb}?key=${API_KEY}`;
-  const authenticatedUsdz = `${usdz}?key=${API_KEY}`;
-
-  console.log("Loading Authenticated Model:", authenticatedGlb);
-
-  viewer.src = authenticatedGlb;
-  viewer.setAttribute("ios-src", authenticatedUsdz);
+  // Note: Backend now includes the ?key=... in the URLs automatically!
+  console.log("🚀 Switching Model:", glb);
+  
+  viewer.src = glb;
+  viewer.setAttribute("ios-src", usdz);
 }
 
-// 🔥 DEBUG MODEL LOADING
-const viewer = document.getElementById("viewer");
-
-viewer.addEventListener("load", () => {
-  console.log("✅ MODEL LOADED SUCCESSFULLY");
-});
-
-viewer.addEventListener("error", (e) => {
-  console.error("❌ MODEL FAILED TO LOAD:", e);
-});
-
-// Start
+// Start the engine
 loadModels();
 </script>
 
