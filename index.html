@@ -152,11 +152,15 @@ async function loadModels() {
 
 function loadModel(glb, usdz) {
   const viewer = document.getElementById("viewer");
+  
+  // We append the API Key so the Vault allows the download
+  const authenticatedGlb = `${glb}?key=${API_KEY}`;
+  const authenticatedUsdz = `${usdz}?key=${API_KEY}`;
 
-  console.log("Loading model:", glb);
+  console.log("Loading Authenticated Model:", authenticatedGlb);
 
-  viewer.src = glb;
-  viewer.setAttribute("ios-src", usdz);
+  viewer.src = authenticatedGlb;
+  viewer.setAttribute("ios-src", authenticatedUsdz);
 }
 
 // 🔥 DEBUG MODEL LOADING
