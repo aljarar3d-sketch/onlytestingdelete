@@ -123,10 +123,9 @@
 </div>
 
 <script>
-// --- ⚙️ CONFIGURATION ---
 const urlParams = new URLSearchParams(window.location.search);
-const CLIENT_SLUG = urlParams.get('client') || 'alaa'; // Reads ?client=xxx
-const TARGET_ASSET = urlParams.get('asset'); // Reads ?asset=xxx
+const CLIENT_SLUG = urlParams.get('client') || 'alaa';
+const TARGET_ASSET = urlParams.get('asset'); 
 const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a';
 
 async function loadModels() {
@@ -135,70 +134,55 @@ async function loadModels() {
       `https://aljar-api.onrender.com/api/clients/public/${CLIENT_SLUG}`,
       { headers: { 'x-api-key': API_KEY } }
     );
-
-    if (!response.ok) throw new Error("Connection failed");
-
     const data = await response.json();
     const list = document.getElementById("modelsList");
     list.innerHTML = "";
-
-    let autoLoaded = false;
 
     data.categories.forEach(category => {
       category.assets.forEach(asset => {
         const div = document.createElement("div");
         div.className = "item";
         
-        // 1. Setup QR Thumbnail or Placeholder
-        const qrHtml = asset.qr_code_url 
-          ? `<img src="${asset.qr_code_url}" class="qr-thumb" onclick="window.open('${asset.qr_code_url}')">`
-          : `<div class="no-qr">No QR</div>`;
-
         div.innerHTML = `
-          <div class="item-info" id="asset-${asset.slug}">
+          <div class="item-info">
             <b>${category.name}</b>
             <span>${asset.name}</span>
           </div>
-          ${qrHtml}
+          ${asset.qr_code_url ? `<img src="${asset.qr_code_url}" class="qr-thumb">` : `<div class="no-qr">No QR</div>`}
         `;
 
-        // 2. Click Logic
-        div.querySelector('.item-info').onclick = () => {
-          loadModel(asset.glb_url, asset.usdz_url);
+        // ✅ CLICKING THE ITEM NOW TRIGGERS AR DIRECTLY
+        div.onclick = () => {
+          loadModel(asset.glb_url, asset.usdz_url, true); // true = launch AR
         };
 
         list.appendChild(div);
 
-        // 3. 🧠 SMART LOAD LOGIC
-        // Priority 1: If URL has ?asset=... load that one
-        // Priority 2: If no asset in URL, load the very first one
+        // ✅ AUTO-LOAD FROM QR SCAN
         if (TARGET_ASSET && asset.slug === TARGET_ASSET) {
-          loadModel(asset.glb_url, asset.usdz_url);
-          autoLoaded = true;
-          div.style.borderColor = "#ff4757"; // Highlight it
-        } else if (!TARGET_ASSET && !autoLoaded) {
-          loadModel(asset.glb_url, asset.usdz_url);
-          autoLoaded = true;
+          loadModel(asset.glb_url, asset.usdz_url, false);
+          // If scanned from QR, we show a big "Enter AR" message
+          document.getElementById("ar-button").innerHTML = "🚀 TAP TO VIEW IN CAMERA";
         }
       });
     });
+  } catch (err) { console.error(err); }
+}
 
-  } catch (err) {
-    document.getElementById("modelsList").innerHTML = `<p style="color:red">❌ ${err.message}</p>`;
+function loadModel(glb, usdz, shouldActivateAR) {
+  const viewer = document.getElementById("viewer");
+  viewer.src = glb;
+  viewer.setAttribute("ios-src", usdz);
+
+  // ✅ THIS IS THE MAGIC PART
+  // We wait for the model to load, then we trigger the camera
+  if (shouldActivateAR) {
+    viewer.addEventListener('load', () => {
+      viewer.activateAR();
+    }, { once: true });
   }
 }
 
-function loadModel(glb, usdz) {
-  const viewer = document.getElementById("viewer");
-  
-  // Note: Backend now includes the ?key=... in the URLs automatically!
-  console.log("🚀 Switching Model:", glb);
-  
-  viewer.src = glb;
-  viewer.setAttribute("ios-src", usdz);
-}
-
-// Start the engine
 loadModels();
 </script>
 
