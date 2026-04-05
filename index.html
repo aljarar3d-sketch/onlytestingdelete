@@ -282,18 +282,40 @@ function loadModel(glb, usdz, shouldActivateAR) {
 
 // --- 🆕 Scan Experience Logic ---
 function setupScanExperience(asset, categoryName) {
-  // 1. Switch Views
   standardView.style.display = 'none';
   scanOverlay.classList.add('visible');
 
-  // 2. Populate Data
   document.getElementById('scan-cat-name').innerText = categoryName;
   document.getElementById('scan-asset-name').innerText = asset.name;
 
-  // 3. Pre-load the models into the secondary viewer
   const scanViewer = document.getElementById('scan-model-viewer');
+  
+  // 1. Show a "Loading..." state on the button
+  const btn = document.querySelector('.big-ar-button');
+  btn.innerText = "⏳ LOADING 3D OBJECT...";
+  btn.style.opacity = "0.6";
+
+  // 2. Set the sources
   scanViewer.src = asset.glb_url;
   scanViewer.setAttribute("ios-src", asset.usdz_url);
+
+  // 3. AUTO-LAUNCH logic
+  scanViewer.addEventListener('ar-status', (event) => {
+    if(event.detail.status === 'not-presenting') {
+       btn.innerText = "📸 OPEN CAMERA";
+       btn.style.opacity = "1";
+    }
+  });
+
+  // When the model is fully loaded in the background
+  scanViewer.addEventListener('load', () => {
+    btn.innerText = "📸 VIEW IN YOUR SPACE";
+    btn.style.opacity = "1";
+    
+    // Optional: We can't auto-launch without a click, but we can 
+    // make the button pulse or glow to encourage the immediate tap.
+    btn.classList.add('pulse-animation');
+  });
 }
 
 function launchCamera() {
