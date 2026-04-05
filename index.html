@@ -131,7 +131,21 @@
     }
 
     .big-ar-button:active { transform: scale(0.95); }
+@keyframes pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 71, 87, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+  }
 
+  .pulse-animation {
+    animation: pulse 1.5s infinite;
+  }
+
+  .big-ar-button:disabled {
+    background: #444;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
   </style>
 </head>
 
@@ -193,10 +207,11 @@
 
 
 <script>
+
 // --- ⚙️ CONFIGURATION ---
 const urlParams = new URLSearchParams(window.location.search);
 const CLIENT_SLUG = urlParams.get('client') || 'alaa';
-const TARGET_ASSET = urlParams.get('asset'); // The slug from the QR code
+const TARGET_ASSET = urlParams.get('asset'); 
 const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a';
 
 const scanOverlay = document.getElementById('ar-scan-overlay');
@@ -212,10 +227,8 @@ async function loadModels() {
     const list = document.getElementById("modelsList");
     list.innerHTML = "";
 
-    // If scanning from QR, we only care about finding that ONE asset
     if (TARGET_ASSET) {
       let found = false;
-      
       data.categories.forEach(category => {
         category.assets.forEach(asset => {
           if (asset.slug === TARGET_ASSET) {
@@ -224,63 +237,40 @@ async function loadModels() {
           }
         });
       });
-
       if (!found) {
-        document.body.innerHTML = "<h2 style='color:red; margin-top:50px;'>❌ Asset Not Found</h2><p style='text-align:center'>The link may be outdated.</p>";
+        document.body.innerHTML = "<h2 style='color:red; margin-top:50px;'>❌ Asset Not Found</h2>";
       }
-      return; // Stop here, don't build the list
+      return; 
     }
 
-
-    // --- STANDARD LIST EXPERIENCE ---
-    // (Only runs if NO asset is in the URL)
+    // Standard List logic
     let firstLoaded = false;
     data.categories.forEach(category => {
       category.assets.forEach(asset => {
         const div = document.createElement("div");
         div.className = "item";
-        
         div.innerHTML = `
-          <div class="item-info">
-            <b>${category.name}</b>
-            <span>${asset.name}</span>
-          </div>
+          <div class="item-info"><b>${category.name}</b><span>${asset.name}</span></div>
           ${asset.qr_code_url ? `<img src="${asset.qr_code_url}" class="qr-thumb">` : `<div class="no-qr">No QR</div>`}
         `;
-
-        // CLICKING IN LIST TRIGGERS AR DIRECTLY
-        div.querySelector('.item-info').onclick = () => {
-          loadModel(asset.glb_url, asset.usdz_url, true); // true = launch AR
-        };
-
+        div.querySelector('.item-info').onclick = () => loadModel(asset.glb_url, asset.usdz_url, true);
         list.appendChild(div);
-
-        // AUTO LOAD FIRST MODEL ON PAGE LOAD
-        if (!firstLoaded) {
-          loadModel(asset.glb_url, asset.usdz_url, false);
-          firstLoaded = true;
-        }
+        if (!firstLoaded) { loadModel(asset.glb_url, asset.usdz_url, false); firstLoaded = true; }
       });
     });
-
   } catch (err) { console.error(err); }
 }
 
-// --- List View Logic ---
 function loadModel(glb, usdz, shouldActivateAR) {
   const viewer = document.getElementById("viewer");
   viewer.src = glb;
   viewer.setAttribute("ios-src", usdz);
-
-  // Magic Part: Wait for load, then trigger camera
   if (shouldActivateAR) {
-    viewer.addEventListener('load', () => {
-      viewer.activateAR();
-    }, { once: true });
+    viewer.addEventListener('load', () => viewer.activateAR(), { once: true });
   }
 }
 
-// --- 🆕 Scan Experience Logic ---
+// --- 🆕 QR SCAN AUTO-CAMERA LOGIC ---
 function setupScanExperience(asset, categoryName) {
   standardView.style.display = 'none';
   scanOverlay.classList.add('visible');
@@ -289,44 +279,36 @@ function setupScanExperience(asset, categoryName) {
   document.getElementById('scan-asset-name').innerText = asset.name;
 
   const scanViewer = document.getElementById('scan-model-viewer');
-  
-  // 1. Show a "Loading..." state on the button
   const btn = document.querySelector('.big-ar-button');
-  btn.innerText = "⏳ LOADING 3D OBJECT...";
-  btn.style.opacity = "0.6";
 
-  // 2. Set the sources
+  // Set loading state
+  btn.innerText = "⏳ PREPARING 3D OBJECT...";
+  btn.disabled = true;
+  btn.style.opacity = "0.5";
+
+  // Load the model
   scanViewer.src = asset.glb_url;
   scanViewer.setAttribute("ios-src", asset.usdz_url);
 
-  // 3. AUTO-LAUNCH logic
-  scanViewer.addEventListener('ar-status', (event) => {
-    if(event.detail.status === 'not-presenting') {
-       btn.innerText = "📸 OPEN CAMERA";
-       btn.style.opacity = "1";
-    }
+  // When model is ready, enable button & pulse
+  scanViewer.addEventListener('load', () => {
+    btn.innerText = "📸 OPEN CAMERA NOW";
+    btn.disabled = false;
+    btn.classList.add('pulse-ready');
   });
 
-  // When the model is fully loaded in the background
-  scanViewer.addEventListener('load', () => {
-    btn.innerText = "📸 VIEW IN YOUR SPACE";
-    btn.style.opacity = "1";
-    
-    // Optional: We can't auto-launch without a click, but we can 
-    // make the button pulse or glow to encourage the immediate tap.
-    btn.classList.add('pulse-animation');
+  // If loading fails (Vault Proxy Error)
+  scanViewer.addEventListener('error', () => {
+    btn.innerText = "❌ ACCESS DENIED";
+    btn.style.background = "#000";
   });
 }
 
 function launchCamera() {
   const scanViewer = document.getElementById('scan-model-viewer');
-  
-  // This satisfies the browser gesture requirement perfectly.
-  // The moment they tap the big red button, the camera opens.
   scanViewer.activateAR();
 }
 
-// Start the engine
 loadModels();
 </script>
 
