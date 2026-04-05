@@ -17,9 +17,10 @@
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    h2 { margin: 20px 0 10px 0; font-weight: 300; letter-spacing: 1px; }
+    h2 { margin: 20px 0 10px 0; font-weight: 300; letter-spacing: 1px; text-align: center;}
 
     model-viewer {
       width: 95%;
@@ -32,6 +33,7 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
 
+    /* Standard AR button (for list clicking) */
     #ar-button {
       background: #ff4757;
       color: white;
@@ -48,6 +50,7 @@
       align-items: center;
       gap: 8px;
       box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+      z-index: 2;
     }
 
     .list { width: 95%; max-width: 800px; padding-bottom: 40px; }
@@ -79,54 +82,125 @@
       cursor: zoom-in;
     }
 
-    .no-qr {
-      width: 60px;
-      height: 60px;
-      background: #333;
-      border-radius: 8px;
-      display: flex;
+    /* --- 🆕 Styles for the QR Scan Experience --- */
+    
+    /* Fullscreen Overlay to trigger AR gesture */
+    #ar-scan-overlay {
+      display: none; /* Hidden by default, shown only on scan */
+      position: fixed;
+      inset: 0;
+      background: #0f0f0f; /* Match body bg */
+      z-index: 1000; /* Over everything */
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
-      color: #666;
+      text-align: center;
     }
+
+    #ar-scan-overlay.visible {
+      display: flex;
+    }
+
+    #scan-model-viewer {
+      width: 100%;
+      height: 50vh; /* Model takes top half */
+      background: transparent;
+      margin-bottom: 20px;
+    }
+
+    .scan-info {
+      padding: 0 30px;
+      margin-bottom: 40px;
+    }
+
+    .scan-info b { font-size: 12px; color: #ff4757; text-transform: uppercase;}
+    .scan-info h1 { font-size: 32px; margin: 5px 0 10px 0; color: white; font-weight: bold;}
+    .scan-info p { color: #aaa; margin: 0; font-size: 16px;}
+
+    .big-ar-button {
+      background: #ff4757;
+      color: white;
+      padding: 20px 40px;
+      border-radius: 50px;
+      border: none;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(255,71,87,0.6);
+      transition: transform 0.1s;
+    }
+
+    .big-ar-button:active { transform: scale(0.95); }
+
   </style>
 </head>
 
 <body>
 
-<h2>ALJAR <span style="color:#ff4757">VAULT</span></h2>
+<div id="standard-view">
+  <h2>ALJAR MEOW <span style="color:#ff4757">VAULT</span></h2>
 
-<model-viewer 
-  id="viewer"
-  src=""
-  ios-src=""
-  ar
-  ar-modes="webxr scene-viewer quick-look"
-  camera-controls
-  auto-rotate
-  shadow-intensity="1"
-  environment-image="neutral"
-  exposure="1.2">
+  <model-viewer 
+    id="viewer"
+    src=""
+    ios-src=""
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    camera-controls
+    auto-rotate
+    shadow-intensity="1"
+    environment-image="neutral"
+    exposure="1.2">
 
-  <button slot="ar-button" id="ar-button">
-    <span>👋</span> VIEW IN YOUR SPACE
-  </button>
+    <button slot="ar-button" id="ar-button">
+      <span>👋</span> VIEW IN YOUR SPACE
+    </button>
 
-  <div slot="poster" style="display:flex; justify-content:center; align-items:center; height:100%;">
-    <p>Select a model to begin...</p>
+    <div slot="poster" style="display:flex; justify-content:center; align-items:center; height:100%;">
+      <p>Select a model to begin...</p>
+    </div>
+  </model-viewer>
+
+  <div class="list" id="modelsList">
+    <p style="text-align:center; color:#666;">Synchronizing with Aljar Cloud...</p>
   </div>
-</model-viewer>
-
-<div class="list" id="modelsList">
-  <p style="text-align:center; color:#666;">Synchronizing with Aljar Cloud...</p>
 </div>
 
+
+<div id="ar-scan-overlay">
+  <model-viewer 
+    id="scan-model-viewer" 
+    src="" 
+    ios-src="" 
+    ar 
+    ar-modes="webxr scene-viewer quick-look"
+    camera-controls 
+    auto-rotate 
+    interaction-prompt="none"
+    environment-image="neutral">
+  </model-viewer>
+
+  <div class="scan-info">
+    <b id="scan-cat-name">CATEGORY</b>
+    <h1 id="scan-asset-name">Product Name</h1>
+    <p>Object is ready. Tap below to launch your camera.</p>
+  </div>
+
+  <button class="big-ar-button" onclick="launchCamera()">
+    📸 OPEN CAMERA
+  </button>
+</div>
+
+
 <script>
+// --- ⚙️ CONFIGURATION ---
 const urlParams = new URLSearchParams(window.location.search);
 const CLIENT_SLUG = urlParams.get('client') || 'alaa';
-const TARGET_ASSET = urlParams.get('asset'); 
+const TARGET_ASSET = urlParams.get('asset'); // The slug from the QR code
 const API_KEY = 'fd08c7d3-ec11-4624-b703-e6f5e3f2101a';
+
+const scanOverlay = document.getElementById('ar-scan-overlay');
+const standardView = document.getElementById('standard-view');
 
 async function loadModels() {
   try {
@@ -138,6 +212,29 @@ async function loadModels() {
     const list = document.getElementById("modelsList");
     list.innerHTML = "";
 
+    // If scanning from QR, we only care about finding that ONE asset
+    if (TARGET_ASSET) {
+      let found = false;
+      
+      data.categories.forEach(category => {
+        category.assets.forEach(asset => {
+          if (asset.slug === TARGET_ASSET) {
+            found = true;
+            setupScanExperience(asset, category.name);
+          }
+        });
+      });
+
+      if (!found) {
+        document.body.innerHTML = "<h2 style='color:red; margin-top:50px;'>❌ Asset Not Found</h2><p style='text-align:center'>The link may be outdated.</p>";
+      }
+      return; // Stop here, don't build the list
+    }
+
+
+    // --- STANDARD LIST EXPERIENCE ---
+    // (Only runs if NO asset is in the URL)
+    let firstLoaded = false;
     data.categories.forEach(category => {
       category.assets.forEach(asset => {
         const div = document.createElement("div");
@@ -151,31 +248,31 @@ async function loadModels() {
           ${asset.qr_code_url ? `<img src="${asset.qr_code_url}" class="qr-thumb">` : `<div class="no-qr">No QR</div>`}
         `;
 
-        // ✅ CLICKING THE ITEM NOW TRIGGERS AR DIRECTLY
-        div.onclick = () => {
+        // CLICKING IN LIST TRIGGERS AR DIRECTLY
+        div.querySelector('.item-info').onclick = () => {
           loadModel(asset.glb_url, asset.usdz_url, true); // true = launch AR
         };
 
         list.appendChild(div);
 
-        // ✅ AUTO-LOAD FROM QR SCAN
-        if (TARGET_ASSET && asset.slug === TARGET_ASSET) {
+        // AUTO LOAD FIRST MODEL ON PAGE LOAD
+        if (!firstLoaded) {
           loadModel(asset.glb_url, asset.usdz_url, false);
-          // If scanned from QR, we show a big "Enter AR" message
-          document.getElementById("ar-button").innerHTML = "🚀 TAP TO VIEW IN CAMERA";
+          firstLoaded = true;
         }
       });
     });
+
   } catch (err) { console.error(err); }
 }
 
+// --- List View Logic ---
 function loadModel(glb, usdz, shouldActivateAR) {
   const viewer = document.getElementById("viewer");
   viewer.src = glb;
   viewer.setAttribute("ios-src", usdz);
 
-  // ✅ THIS IS THE MAGIC PART
-  // We wait for the model to load, then we trigger the camera
+  // Magic Part: Wait for load, then trigger camera
   if (shouldActivateAR) {
     viewer.addEventListener('load', () => {
       viewer.activateAR();
@@ -183,6 +280,31 @@ function loadModel(glb, usdz, shouldActivateAR) {
   }
 }
 
+// --- 🆕 Scan Experience Logic ---
+function setupScanExperience(asset, categoryName) {
+  // 1. Switch Views
+  standardView.style.display = 'none';
+  scanOverlay.classList.add('visible');
+
+  // 2. Populate Data
+  document.getElementById('scan-cat-name').innerText = categoryName;
+  document.getElementById('scan-asset-name').innerText = asset.name;
+
+  // 3. Pre-load the models into the secondary viewer
+  const scanViewer = document.getElementById('scan-model-viewer');
+  scanViewer.src = asset.glb_url;
+  scanViewer.setAttribute("ios-src", asset.usdz_url);
+}
+
+function launchCamera() {
+  const scanViewer = document.getElementById('scan-model-viewer');
+  
+  // This satisfies the browser gesture requirement perfectly.
+  // The moment they tap the big red button, the camera opens.
+  scanViewer.activateAR();
+}
+
+// Start the engine
 loadModels();
 </script>
 
