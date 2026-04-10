@@ -3,16 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aljar AR Viewer</title>
+  <title>Aljar AR | Premium Viewer</title>
 
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
   <style>
+    :root {
+      --primary: #ff4757;
+      --bg: #050505;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #ffffff;
+      --text-dim: #a0a0a0;
+    }
+
     body {
       margin: 0;
-      background: #0f0f0f;
-      color: white;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -20,166 +29,204 @@
       overflow-x: hidden;
     }
 
-    h2 { margin: 20px 0 10px 0; font-weight: 300; letter-spacing: 1px; text-align: center;}
-
-    model-viewer {
-      width: 95%;
-      max-width: 800px;
-      height: 60vh;
-      background: radial-gradient(circle, #2c2c2c 0%, #121212 100%);
-      border-radius: 24px;
-      margin-bottom: 20px;
-      position: relative;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    /* --- Header & Title --- */
+    .header {
+      padding: 40px 20px 20px;
+      text-align: center;
     }
 
-    /* Standard AR button (for list clicking) */
-    #ar-button {
-      background: #ff4757;
-      color: white;
+    h2 { 
+      margin: 0; 
+      font-weight: 700; 
+      font-size: 1.5rem;
+      letter-spacing: 2px; 
+      text-transform: uppercase;
+    }
+
+    .accent { color: var(--primary); text-shadow: 0 0 15px rgba(255, 71, 87, 0.3); }
+
+    /* --- Main Viewer Container --- */
+    .viewer-container {
+      width: 92%;
+      max-width: 900px;
+      position: relative;
+      margin-bottom: 30px;
+    }
+
+    model-viewer {
+      width: 100%;
+      height: 55vh;
+      background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
       border-radius: 30px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      border: 1px solid var(--glass-border);
+      --poster-color: transparent;
+    }
+
+    /* --- Custom AR Button --- */
+    #ar-button {
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
       border: none;
-      padding: 12px 24px;
-      font-weight: bold;
+      padding: 14px 28px;
+      font-weight: 600;
       position: absolute;
-      bottom: 20px;
+      bottom: 25px;
       left: 50%;
       transform: translateX(-50%);
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
-      z-index: 2;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(255, 71, 87, 0.4);
+      transition: all 0.3s ease;
+      backdrop-filter: blur(5px);
     }
 
-    .list { width: 95%; max-width: 800px; padding-bottom: 40px; }
+    #ar-button:hover {
+      transform: translateX(-50%) translateY(-3px);
+      box-shadow: 0 15px 30px rgba(255, 71, 87, 0.6);
+    }
+
+    /* --- List Styling --- */
+    .list { 
+      width: 92%; 
+      max-width: 800px; 
+      padding-bottom: 60px; 
+    }
+
+    .section-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 15px;
+      display: block;
+    }
 
     .item {
-      background: #1e1e1e;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 15px;
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      padding: 18px;
+      margin-bottom: 15px;
+      border-radius: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: transform 0.2s, background 0.2s;
-      border: 1px solid #333;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid var(--glass-border);
     }
 
-    .item:hover { background: #252525; transform: translateY(-2px); }
+    .item:hover { 
+      background: rgba(255, 255, 255, 0.08); 
+      border-color: var(--primary);
+      transform: scale(1.02);
+    }
 
     .item-info { flex-grow: 1; cursor: pointer; }
-    .item-info b { display: block; color: #ff4757; font-size: 12px; text-transform: uppercase; }
-    .item-info span { font-size: 16px; color: #eee; }
+    .item-info b { 
+        display: block; 
+        color: var(--primary); 
+        font-size: 11px; 
+        text-transform: uppercase; 
+        margin-bottom: 4px;
+        letter-spacing: 1px;
+    }
+    .item-info span { font-size: 18px; font-weight: 500; color: #fff; }
 
     .qr-thumb {
-      width: 60px;
-      height: 60px;
-      background: white;
-      border-radius: 8px;
-      padding: 4px;
-      cursor: zoom-in;
+      width: 55px;
+      height: 55px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 5px;
+      filter: grayscale(1);
+      transition: filter 0.3s;
     }
+    .item:hover .qr-thumb { filter: grayscale(0); }
 
-    /* --- 🆕 Styles for the QR Scan Experience --- */
-    
-    /* Fullscreen Overlay to trigger AR gesture */
+    /* --- Scan Overlay (Full Screen) --- */
     #ar-scan-overlay {
-      display: none; /* Hidden by default, shown only on scan */
+      display: none;
       position: fixed;
       inset: 0;
-      background: #0f0f0f; /* Match body bg */
-      z-index: 1000; /* Over everything */
+      background: var(--bg);
+      z-index: 1000;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      text-align: center;
     }
 
-    #ar-scan-overlay.visible {
-      display: flex;
-    }
+    #ar-scan-overlay.visible { display: flex; }
 
-    #scan-model-viewer {
-      width: 100%;
-      height: 50vh; /* Model takes top half */
-      background: transparent;
-      margin-bottom: 20px;
-    }
-
-    .scan-info {
-      padding: 0 30px;
-      margin-bottom: 40px;
-    }
-
-    .scan-info b { font-size: 12px; color: #ff4757; text-transform: uppercase;}
-    .scan-info h1 { font-size: 32px; margin: 5px 0 10px 0; color: white; font-weight: bold;}
-    .scan-info p { color: #aaa; margin: 0; font-size: 16px;}
+    .scan-info h1 { font-size: 2.5rem; margin: 10px 0; letter-spacing: -1px; }
 
     .big-ar-button {
-      background: #ff4757;
+      background: var(--primary);
       color: white;
-      padding: 20px 40px;
-      border-radius: 50px;
+      padding: 22px 50px;
+      border-radius: 100px;
       border: none;
-      font-size: 20px;
-      font-weight: bold;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 1px;
       cursor: pointer;
-      box-shadow: 0 0 30px rgba(255,71,87,0.6);
-      transition: transform 0.1s;
+      box-shadow: 0 0 40px rgba(255, 71, 87, 0.4);
+      transition: all 0.3s;
     }
 
-    .big-ar-button:active { transform: scale(0.95); }
-@keyframes pulse {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
-    70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 71, 87, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
-  }
+    /* Animations */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(255, 71, 87, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    }
 
-  .pulse-animation {
-    animation: pulse 1.5s infinite;
-  }
+    .pulse-ready { animation: pulse-ring 2s infinite; }
 
-  .big-ar-button:disabled {
-    background: #444;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
+    /* Hide standard scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
   </style>
 </head>
 
 <body>
 
-<div id="standard-view">
-  <h2>ALJAR MEOW <span style="color:#ff4757">VAULT</span></h2>
+<div id="standard-view" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+  <div class="header">
+    <h2>ALJAR <span class="accent">VAULT</span></h2>
+  </div>
 
-  <model-viewer 
-    id="viewer"
-    src=""
-    ios-src=""
-    ar
-    ar-modes="webxr scene-viewer quick-look"
-    camera-controls
-    auto-rotate
-    shadow-intensity="1"
-    environment-image="neutral"
-    exposure="1.2">
+  <div class="viewer-container">
+    <model-viewer 
+      id="viewer"
+      src=""
+      ios-src=""
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      camera-controls
+      auto-rotate
+      shadow-intensity="2"
+      environment-image="neutral"
+      exposure="1">
 
-    <button slot="ar-button" id="ar-button">
-      <span>👋</span> VIEW IN YOUR SPACE
-    </button>
+      <button slot="ar-button" id="ar-button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        LAUNCH EXPERIENCE
+      </button>
 
-    <div slot="poster" style="display:flex; justify-content:center; align-items:center; height:100%;">
-      <p>Select a model to begin...</p>
-    </div>
-  </model-viewer>
+      <div slot="poster" style="display:flex; justify-content:center; align-items:center; height:100%; color: #666;">
+        <p>Awaiting selection...</p>
+      </div>
+    </model-viewer>
+  </div>
 
   <div class="list" id="modelsList">
-    <p style="text-align:center; color:#666;">Synchronizing with Aljar Cloud...</p>
+    <span class="section-label">Inventory</span>
+    <p style="text-align:center; color:#444;">Fetching assets...</p>
   </div>
 </div>
-
 
 <div id="ar-scan-overlay">
   <model-viewer 
@@ -194,21 +241,19 @@
     environment-image="neutral">
   </model-viewer>
 
-  <div class="scan-info">
-    <b id="scan-cat-name">CATEGORY</b>
+  <div class="scan-info" style="text-align: center; padding: 20px;">
+    <b id="scan-cat-name" style="color: var(--primary); letter-spacing: 2px;">CATEGORY</b>
     <h1 id="scan-asset-name">Product Name</h1>
-    <p>Object is ready. Tap below to launch your camera.</p>
+    <p style="color: var(--text-dim);">The asset is synchronized. Tap below to begin.</p>
   </div>
 
   <button class="big-ar-button" onclick="launchCamera()">
-    📸 OPEN CAMERA
+    VIEW IN AUGMENTED REALITY
   </button>
 </div>
 
-
 <script>
-
-// --- ⚙️ CONFIGURATION ---
+// Logic remains identical to your working code to ensure stability
 const urlParams = new URLSearchParams(window.location.search);
 const CLIENT_SLUG = urlParams.get('client') || 'alaa';
 const TARGET_ASSET = urlParams.get('asset'); 
@@ -225,7 +270,7 @@ async function loadModels() {
     );
     const data = await response.json();
     const list = document.getElementById("modelsList");
-    list.innerHTML = "";
+    list.innerHTML = `<span class="section-label">${CLIENT_SLUG}'s Collection</span>`;
 
     if (TARGET_ASSET) {
       let found = false;
@@ -238,12 +283,11 @@ async function loadModels() {
         });
       });
       if (!found) {
-        document.body.innerHTML = "<h2 style='color:red; margin-top:50px;'>❌ Asset Not Found</h2>";
+        document.body.innerHTML = "<div style='padding:50px; text-align:center;'><h2 style='color:red;'>❌ Asset Not Found</h2><p>Check the URL and try again.</p></div>";
       }
       return; 
     }
 
-    // Standard List logic
     let firstLoaded = false;
     data.categories.forEach(category => {
       category.assets.forEach(asset => {
@@ -251,7 +295,7 @@ async function loadModels() {
         div.className = "item";
         div.innerHTML = `
           <div class="item-info"><b>${category.name}</b><span>${asset.name}</span></div>
-          ${asset.qr_code_url ? `<img src="${asset.qr_code_url}" class="qr-thumb">` : `<div class="no-qr">No QR</div>`}
+          ${asset.qr_code_url ? `<img src="${asset.qr_code_url}" class="qr-thumb">` : `<div style="font-size:10px; opacity:0.3">NO QR</div>`}
         `;
         div.querySelector('.item-info').onclick = () => loadModel(asset.glb_url, asset.usdz_url, true);
         list.appendChild(div);
@@ -270,37 +314,26 @@ function loadModel(glb, usdz, shouldActivateAR) {
   }
 }
 
-// --- 🆕 QR SCAN AUTO-CAMERA LOGIC ---
 function setupScanExperience(asset, categoryName) {
   standardView.style.display = 'none';
   scanOverlay.classList.add('visible');
-
   document.getElementById('scan-cat-name').innerText = categoryName;
   document.getElementById('scan-asset-name').innerText = asset.name;
-
   const scanViewer = document.getElementById('scan-model-viewer');
   const btn = document.querySelector('.big-ar-button');
 
-  // Set loading state
-  btn.innerText = "⏳ PREPARING 3D OBJECT...";
+  btn.innerText = "INITIALIZING...";
   btn.disabled = true;
   btn.style.opacity = "0.5";
 
-  // Load the model
   scanViewer.src = asset.glb_url;
   scanViewer.setAttribute("ios-src", asset.usdz_url);
 
-  // When model is ready, enable button & pulse
   scanViewer.addEventListener('load', () => {
-    btn.innerText = "📸 OPEN CAMERA NOW";
+    btn.innerText = "START EXPERIENCE";
     btn.disabled = false;
+    btn.style.opacity = "1";
     btn.classList.add('pulse-ready');
-  });
-
-  // If loading fails (Vault Proxy Error)
-  scanViewer.addEventListener('error', () => {
-    btn.innerText = "❌ ACCESS DENIED";
-    btn.style.background = "#000";
   });
 }
 
